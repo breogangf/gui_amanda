@@ -6,8 +6,11 @@ import time
 
 from .setup_logger import logger
 from src.authentication import Authencation
+from src.listener import Listener
 
 class Assets(Authencation):
+
+    __subscription_assets = os.environ.get('SUBSCRIPTION_ASSETS')
 
     def __init__(self, path):
         super().__init__()
@@ -18,8 +21,8 @@ class Assets(Authencation):
         self.tenant = 'Zara'
         self.visibility = 'PUBLIC'
         self.__set_information(path)
+        self.listener = Listener(self.__subscription_assets, self.__mark_as_completed)
         logger.info(f'New asset instance by name "{self.asset_name}"')
-
 
     def upload(self):
         data = self.__get_signed_url()
@@ -29,14 +32,17 @@ class Assets(Authencation):
         self.__upload_asset(data['url'])
         logger.info(f'Uploaded asset name "{self.asset_name}" with assetId "{self.asset_id}"')
 
-        logger.info(f'Checking "{self.asset_id}" is completed...')
-        self.__start_polling()
-        logger.info(f'AssetId "{self.asset_id}" completed')
-
         return self.asset_id
 
     def read(self):
         return self.do_authentication_request('GET', f'/assets/{self.asset_id}')
+
+    def __mark_as_completed(self, event):
+        received_asset = event['asset']
+        self.asset_completed = True if self.asset_id == received_asset['assetId'] else False
+        if self.is_completed():
+            logger.info(f'Asset {received_asset["assetId"]} marks as completed')
+        return self.is_completed()
 
     def is_completed(self):
         return self.asset_completed

@@ -1,17 +1,23 @@
+import os
 import json
 import time
 
 from .setup_logger import logger
 from src.authentication import Authencation
+from src.listener import Listener
 
 class Jobs(Authencation):
+
+    __subscription_jobs = os.environ.get('SUBSCRIPTION_JOBS')
 
     def __init__(self, workflow_id):
         super().__init__()
         self.workflow_id = workflow_id
         self.job_id = None
         self.status = None
+        self.job_completed = False
         self.data = {}
+        self.listener = Listener(self.__subscription_jobs, self.__mark_as_completed)
 
     def process(self, assets = []):
         asset_ids = list(map(lambda asset: asset.asset_id, assets))
@@ -20,11 +26,23 @@ class Jobs(Authencation):
         self.job_id = created_job['jobId']
         self.status = created_job['status']['job']
         self.data = created_job
-        logger.info(f'Createad job by jobId "{self.job_id}"')
+        logger.info(f'Created job by jobId "{self.job_id}"')
         return created_job
 
     def read(self):
         return self.do_authentication_request('GET', f'/jobs/{self.job_id}')
+
+    def __mark_as_completed(self, event):
+        if self.job_id == event['jobId']:
+            self.status = event['status']['job']
+            self.job_completed = True if self.status == 'finished' or self.status == 'failed' else False
+            if self.is_completed():
+                self.data = event
+                logger.info(f'Job {event["jobId"]} marks as completed')
+        return self.is_completed()
+
+    def is_completed(self):
+        return self.job_completed
 
     def start_polling(self):
         logger.info(f'Checking "{self.job_id}" is processed...')

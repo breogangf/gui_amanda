@@ -9,6 +9,9 @@ Create an `.env` file in the root level with the followings keys:
 HOSTNAME=<hostname>
 TARGET_AUDIENCE=<target_audience>
 KEY_PATH=<path>/key.json
+PROJECT_NAME=<project_name>
+SUBSCRIPTION_ASSETS=<subscription_assets_name>
+SUBSCRIPTION_JOBS=<subscription_jobs_name>
 ```
 ## Install Dependencies
 To intall the dependencies, you should run the command `pip install -r requirements.txt`

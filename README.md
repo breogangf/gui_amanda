@@ -15,3 +15,10 @@ SUBSCRIPTION_JOBS=<subscription_jobs_name>
 ```
 ## Install Dependencies
 To intall the dependencies, you should run the command `pip install -r requirements.txt`
+
+# Creating an installer
+For creating an installer to launch the followings:
+
+* For Mac: `pyinstaller --paths lib/python3.9/site-packages --paths .env --clean main.py`
+* For UNIX: TODO
+* For Win: TODO

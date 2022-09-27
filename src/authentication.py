@@ -3,6 +3,9 @@ import urllib3
 
 from google.oauth2 import service_account
 from google.auth.transport.requests import AuthorizedSession
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Authencation:
 

@@ -17,8 +17,8 @@ SUBSCRIPTION_JOBS=<subscription_jobs_name>
 To intall the dependencies, you should run the command `pip install -r requirements.txt`
 
 # Creating an installer
-For creating an installer to launch the followings:
-
-* For Mac: `pyinstaller --paths lib/python3.9/site-packages --paths .env --clean main.py`
-* For UNIX: TODO
-* For Win: TODO
+To create an installer, you should launch the followings command:
+```bash
+pyinstaller main.py --paths <your_python_dependecies> --add-data '.env:.' --onefile --name amanda --clean -y
+```
+If you created a virtual environment, most likely the path will look like as `lib/python3.x/site-packages`, where `x` can be different depending of the minor version

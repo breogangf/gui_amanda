@@ -1,7 +1,10 @@
-from dotenv import load_dotenv
-load_dotenv()
-
 import time
+from pathlib import Path
+from dotenv import load_dotenv
+
+env_variables_path = Path(__file__).resolve().with_name(".env")
+load_dotenv(dotenv_path=env_variables_path)
+
 from src.setup_logger import logger
 from src.assets import Assets
 from src.jobs import Jobs
@@ -12,6 +15,7 @@ if __name__ == '__main__':
     asset = Assets('/Users/kairos/Pictures/foto01.jpg')
     asset.upload()
 
+    logger.info(f'Waiting for the asset "{asset.asset_id}" to be completed...')
     while not asset.is_completed():
         time.sleep(1)
 
@@ -19,6 +23,7 @@ if __name__ == '__main__':
     job.process([asset])
     #job.start_polling()
 
+    logger.info(f'Waiting for the job "{job.job_id}" to be completed...')
     while not job.is_completed():
         time.sleep(1)
 

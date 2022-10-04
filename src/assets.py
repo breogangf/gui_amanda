@@ -24,7 +24,8 @@ class Assets(Authencation):
         self.listener = Listener(self.__subscription_assets, self.__mark_as_completed)
         logger.info(f'New asset instance by name "{self.asset_name}"')
 
-    def upload(self):
+    def upload(self, uploaded_callback):
+        self.uploaded_callback = uploaded_callback
         data = self.__get_signed_url()
         logger.info(f'Obtained a signed url by asset name "{self.asset_name}"')
 
@@ -41,6 +42,7 @@ class Assets(Authencation):
         received_asset = event['asset']
         self.asset_completed = True if self.asset_id == received_asset['assetId'] else False
         if self.is_completed():
+            self.uploaded_callback()
             logger.info(f'Asset {received_asset["assetId"]} marks as completed')
         return self.is_completed()
 

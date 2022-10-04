@@ -15,7 +15,7 @@ class Listener:
     def __init__(self, subscription_name, callback):
         self.subscription_name = subscription_name
         self.callback = callback
-        self.thread = threading.Thread(target=self.__create_subscriber)
+        self.thread = threading.Thread(target=self.__create_subscriber, daemon=True)
         self.thread.start()
 
     def __create_subscriber(self):
@@ -35,6 +35,6 @@ class Listener:
         is_completed = self.callback(event)
         if is_completed:
             message.ack()
-            self.thread.join()
+            self.thread.join(1.0)
         else:
             message.nack()

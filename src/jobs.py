@@ -19,7 +19,8 @@ class Jobs(Authencation):
         self.data = {}
         self.listener = Listener(self.__subscription_jobs, self.__mark_as_completed)
 
-    def process(self, assets = []):
+    def process(self, processed_callback, assets = []):
+        self.processed_callback = processed_callback
         asset_ids = list(map(lambda asset: asset.asset_id, assets))
         body = self.__build_job_body(asset_ids)
         created_job = self.do_authentication_request('POST', '/jobs', json=body)
@@ -36,10 +37,11 @@ class Jobs(Authencation):
         if self.job_id == event['jobId']:
             self.status = event['status']['job']
             self.job_completed = True if self.status == 'finished' or self.status == 'failed' else False
-            if self.is_completed():
+            if self.job_completed:
                 self.data = event
+                self.processed_callback()
                 logger.info(f'Job {event["jobId"]} marks as completed')
-        return self.is_completed()
+        return self.job_completed
 
     def is_completed(self):
         return self.job_completed

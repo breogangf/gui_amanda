@@ -14,9 +14,11 @@ class Listener:
 
     def __init__(self, subscription_name, callback):
         self.subscription_name = subscription_name
-        self.thread = threading.Thread(target=self.consume, args=(callback,), daemon=True)
+        self.thread = threading.Thread(target=self.consume, args=(callback,), daemon=False)
         self.thread.start()
 
+    # TODO Check documentation to improve async pulling
+    # https://cloud.google.com/pubsub/docs/pull?hl=es_419#asynchronous-pull
     def consume(self, callback):
 
         subscriber = pubsub_v1.SubscriberClient().from_service_account_json(self.__keyPath)

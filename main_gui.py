@@ -56,6 +56,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(widget)
 
     def upload(self):
+        self.disableButton(self.buttonSelect)
         self.disableButton(self.buttonUpload)
         self.asset.upload(self.uploadedAssetCallback)
         self.textArea.appendPlainText(f'Uploading video {self.asset.asset_name} with asset_id {self.asset.asset_id}')
@@ -67,6 +68,7 @@ class MainWindow(QMainWindow):
         self.job.process(self.completedJobCallback, assets=[self.asset])
         self.textArea.appendPlainText(f'Requested job by job_id {self.job.job_id} for video {self.asset.asset_name} with asset_id {self.asset.asset_id}')
         self.textArea.appendPlainText(f'Waiting for the job_id {self.job.job_id} to be finished...')
+        [print(t.getName()) for t in threading.enumerate()]
 
     def getFiles(self):
         dlg = QFileDialog()
@@ -78,10 +80,14 @@ class MainWindow(QMainWindow):
 
         if dlg.exec():
             filename = dlg.selectedFiles()
+            [print(t.getName()) for t in threading.enumerate()]
+            if self.asset:
+                del self.asset
+            if self.job:
+                del self.job
             self.selectedFile = filename[0]
             self.asset = Assets(self.selectedFile)
             self.textArea.appendPlainText(f'Selected video {self.asset.asset_name}')
-            self.disableButton(self.buttonSelect)
             self.enableButton(self.buttonUpload)
 
     def uploadedAssetCallback(self):
@@ -94,6 +100,7 @@ class MainWindow(QMainWindow):
         self.textArea.appendPlainText(f'Delivery Urls by jobId "{self.job.job_id}":'),
         [self.textArea.appendPlainText(f'* {delivery_url}') for delivery_url in self.job.get_delivery_urls()],
         self.textArea.appendPlainText('\n'),
+        [print(t.getName()) for t in threading.enumerate()]
 
     def enableButton(self, button):
         button.setEnabled(True)
@@ -101,9 +108,11 @@ class MainWindow(QMainWindow):
     def disableButton(self, button):
         button.setEnabled(False)
 
-app = QApplication(sys.argv)
-
-window = MainWindow()
-window.show()
-
-app.exec()
+if __name__ == '__main__':
+    try:
+        app = QApplication(sys.argv)
+        window = MainWindow()
+        window.show()
+        app.exec()
+    except Exception as ex:
+        print(f'[ERROR] > {ex}')

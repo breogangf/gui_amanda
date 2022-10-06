@@ -11,17 +11,16 @@ load_dotenv(dotenv_path=env_variables_path)
 from src.setup_logger import logger
 from src.assets import Assets
 from src.jobs import Jobs
-from src.utils import get_workflow_by_name
-
-
+from src.utils import get_workflow_details_by_name
 
 
 class Ui_MainWindow(object):
 
     def __init__(self):
-        self.selectedFile = None
+        self.assets = []
         self.asset = None
         self.job = None
+        self.workflow_name = None
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -36,12 +35,16 @@ class Ui_MainWindow(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.selectedButton = QtWidgets.QPushButton(self.verticalLayoutWidget)
         self.selectedButton.setObjectName("pushButton")
-        self.selectedButton.clicked.connect(self.getFiles)
+        self.selectedButton.clicked.connect(self.open_dialog)
         self.verticalLayout.addWidget(self.selectedButton)
-        self.listView = QtWidgets.QListView(self.verticalLayoutWidget)
-        self.listView.setEnabled(True)
-        self.listView.setObjectName("listView")
-        self.verticalLayout.addWidget(self.listView)
+        self.list_view_model = QtGui.QStandardItemModel()
+        self.list_view = QtWidgets.QListView(self.verticalLayoutWidget)
+        self.list_view.setEnabled(True)
+        self.list_view.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.list_view.setObjectName("listView")
+        self.list_view.clicked[QtCore.QModelIndex].connect(self.select_asset)
+        self.list_view.setModel(self.list_view_model)
+        self.verticalLayout.addWidget(self.list_view)
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.uploadButton = QtWidgets.QPushButton(self.verticalLayoutWidget)
@@ -62,6 +65,7 @@ class Ui_MainWindow(object):
         self.comboBox = QtWidgets.QComboBox(self.centralwidget)
         self.comboBox.setGeometry(QtCore.QRect(810, 30, 103, 32))
         self.comboBox.setObjectName("comboBox")
+        self.comboBox.currentTextChanged.connect(self.select_workflow)
         self.comboBox.addItem("")
         self.comboBox.addItem("")
         self.comboBox.addItem("")
@@ -103,56 +107,81 @@ class Ui_MainWindow(object):
         self.workflowLabel.setText(_translate("MainWindow", "Workflow:"))
         self.logsLabel.setText(_translate("MainWindow", "Logs"))
 
-    def getFiles(self):
+    def open_dialog(self):
+        self.clean_up()
+        filters = get_workflow_details_by_name(self.workflow_name)['filter']
         dlg = QFileDialog()
-        dlg.setFileMode(QFileDialog.FileMode.AnyFile)
+        dlg.setFileMode(QFileDialog.FileMode.ExistingFiles)
         dlg.setFilter(QDir.Filter.Files)
-        dlg.setNameFilter("*.mp4")
+        dlg.setDirectory('/Users/kairos/Movies')
+        dlg.setNameFilter(filters)
         dlg.setViewMode(QFileDialog.ViewMode.Detail)
-        filename = QStringListModel()
 
         if dlg.exec():
-            filename = dlg.selectedFiles()
-            if self.asset:
-                del self.asset
-            if self.job:
-                del self.job
-            self.selectedFile = filename[0]
-            self.asset = Assets(self.selectedFile)
+            selected_filenames = dlg.selectedFiles()
+            self.load_assets(selected_filenames)
+            self.disableElement(self.uploadButton)
+            self.textArea.appendPlainText(f'Please, pick some asset to continue')
 
-            model = QtGui.QStandardItemModel()
-            model.appendRow(QtGui.QStandardItem(self.asset.asset_name))
-            self.listView.setModel(model)
+    def clean_up(self):
+        self.list_view_model.clear()
+        self.assets = []
+        if self.asset:
+            del self.asset
+        if self.job:
+            del self.job
 
-            self.textArea.appendPlainText(f'Selected video {self.asset.asset_name}')
-            self.enableButton(self.uploadButton)
+    def load_assets(self, paths):
+        for path in paths:
+            asset = Assets(path)
+            self.assets.append(asset)
+            item = QtGui.QStandardItem(asset.asset_name)
+            item.setData(asset)
+            self.list_view_model.appendRow(item)
+
+    def select_asset(self, index):
+        self.asset = self.list_view_model.itemFromIndex(index).data()
+        self.enableElement(self.uploadButton)
+
+    def select_workflow(self, value):
+        self.workflow_name = value
+        self.clean_up()
+        self.enableElement(self.selectedButton)
+        self.disableElement(self.uploadButton)
+
+    def get_current_workflow(self):
+        return str(self.comboBox.currentText())
 
     def upload(self):
-        self.disableButton(self.selectedButton)
-        self.disableButton(self.uploadButton)
+        self.textArea.appendPlainText(f'Selected {self.asset.asset_name}')
+        self.disableElement(self.selectedButton)
+        self.disableElement(self.uploadButton)
+        self.disableElement(self.comboBox)
         self.asset.upload(self.uploadedAssetCallback)
-        self.textArea.appendPlainText(f'Uploading video {self.asset.asset_name} with asset_id {self.asset.asset_id}')
+        self.textArea.appendPlainText(f'Uploading {self.asset.asset_name} with asset_id {self.asset.asset_id}')
 
     def process(self):
-        self.disableButton(self.processButton)
-        self.textArea.appendPlainText(f'Requesting job for video {self.asset.asset_name} with asset_id {self.asset.asset_id}')
-        self.job = Jobs(get_workflow_by_name('analysis-transcoder'))
+        self.disableElement(self.processButton)
+        self.textArea.appendPlainText(f'Requesting job for {self.asset.asset_name} with asset_id {self.asset.asset_id}')
+        workflow_id = get_workflow_details_by_name(self.workflow_name)['id']
+        self.job = Jobs(workflow_id)
         self.job.process(self.completedJobCallback, assets=[self.asset])
-        self.textArea.appendPlainText(f'Requested job by job_id {self.job.job_id} for video {self.asset.asset_name} with asset_id {self.asset.asset_id}')
+        self.textArea.appendPlainText(f'Requested job by job_id {self.job.job_id} for {self.asset.asset_name} with asset_id {self.asset.asset_id}')
         self.textArea.appendPlainText(f'Waiting for the job_id {self.job.job_id} to be finished...')
 
-    def enableButton(self, button):
-        button.setEnabled(True)
+    def enableElement(self, element):
+        element.setEnabled(True)
 
-    def disableButton(self, button):
-        button.setEnabled(False)
+    def disableElement(self, element):
+        element.setEnabled(False)
 
     def uploadedAssetCallback(self):
-        self.enableButton(self.processButton),
-        self.textArea.appendPlainText(f'Uploaded video {self.asset.asset_name} with asset_id {self.asset.asset_id}')
+        self.enableElement(self.processButton),
+        self.textArea.appendPlainText(f'Uploaded {self.asset.asset_name} with asset_id {self.asset.asset_id}')
 
     def completedJobCallback(self):
-        self.enableButton(self.selectedButton)
+        self.enableElement(self.selectedButton)
+        self.enableElement(self.comboBox)
         self.textArea.appendPlainText(f'Finished job_id {self.job.job_id}'),
         self.textArea.appendPlainText(f'Delivery Urls by jobId "{self.job.job_id}":'),
         [self.textArea.appendPlainText(f'* {delivery_url}') for delivery_url in self.job.get_delivery_urls()],
